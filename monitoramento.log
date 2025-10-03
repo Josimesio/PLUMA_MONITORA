@@ -1,0 +1,445 @@
+2025-01-09 11:27:39 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar.
+2025-01-09 11:27:51 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar.
+2025-01-09 11:28:04 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar.
+2025-01-09 11:37:44 - [FALHA] import requests
+import time
+import threading
+import tkinter as tk
+from tkinter import scrolledtext
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import smtplib
+
+# Configurações
+url = "https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0"  # Substitua pela URL ou IP a ser monitorado
+tempo_verificacao = 10  # Intervalo entre verificações, em segundos
+arquivo_log = "monitoramento.log"
+
+# Configurações de Email
+email_envio = "seuemail@gmail.com"  # Email remetente
+email_senha = "sua_senha"  # Senha do email remetente
+email_destino = "destinatario@gmail.com"  # Email destinatário
+
+monitorando = False  # Controle do monitoramento
+
+
+def enviar_email(mensagem):
+    """Função para enviar notificações por email."""
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = email_envio
+        msg['To'] = email_destino
+        msg['Subject'] = "Alerta: Sistema Fora do Ar"
+
+        msg.attach(MIMEText(mensagem, 'plain'))
+
+        servidor = smtplib.SMTP('smtp.gmail.com', 587)
+        servidor.starttls()
+        servidor.login(email_envio, email_senha)
+        servidor.send_message(msg)
+        servidor.quit()
+
+        adicionar_log("[NOTIFICAÇÃO] Email enviado com sucesso!")
+    except Exception as e:
+        adicionar_log(f"[ERRO] Falha ao enviar email. Detalhes: {e}")
+
+
+def registrar_log(mensagem):
+    """Função para registrar eventos em um arquivo de log."""
+    with open(arquivo_log, "a") as log:
+        log.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} - {mensagem}\n")
+
+
+def adicionar_log(mensagem):
+    """Adiciona uma mensagem ao painel de logs."""
+    painel_logs.insert(tk.END, f"{time.strftime('%Y-%m-%d %H:%M:%S')} - {mensagem}\n")
+    painel_logs.see(tk.END)
+
+
+def monitorar_sistema():
+    """Função principal para monitorar o sistema."""
+    global monitorando
+    while monitorando:
+        try:
+            resposta = requests.get(url, timeout=10)
+            if resposta.status_code == 200:
+                mensagem = f"[OK] {url} está no ar."
+                adicionar_log(mensagem)
+                registrar_log(mensagem)
+            else:
+                mensagem = f"[ERRO] {url} retornou o status: {resposta.status_code}"
+                adicionar_log(mensagem)
+                registrar_log(mensagem)
+                enviar_email(mensagem)
+        except requests.exceptions.RequestException as e:
+            mensagem = f"[FALHA] {url} está fora do ar. Detalhes: {e}"
+            adicionar_log(mensagem)
+            registrar_log(mensagem)
+            enviar_email(mensagem)
+
+        time.sleep(tempo_verificacao)
+
+
+def iniciar_monitoramento():
+    """Inicia o monitoramento em uma thread separada."""
+    global monitorando
+    monitorando = True
+    thread = threading.Thread(target=monitorar_sistema)
+    thread.daemon = True
+    thread.start()
+    adicionar_log("[INFO] Monitoramento iniciado.")
+
+
+def parar_monitoramento():
+    """Para o monitoramento."""
+    global monitorando
+    monitorando = False
+    adicionar_log("[INFO] Monitoramento parado.")
+
+
+# Interface Gráfica
+janela = tk.Tk()
+janela.title("Painel de Monitoramento")
+janela.geometry("600x400")
+
+# Label de URL monitorada
+label_url = tk.Label(janela, text=f"Monitorando: {url}", font=("Arial", 12))
+label_url.pack(pady=10)
+
+# Painel de logs
+painel_logs = scrolledtext.ScrolledText(janela, width=70, height=15)
+painel_logs.pack(pady=10)
+
+# Botões de controle
+frame_botoes = tk.Frame(janela)
+frame_botoes.pack(pady=10)
+
+btn_iniciar = tk.Button(frame_botoes, text="Iniciar Monitoramento", command=iniciar_monitoramento)
+btn_iniciar.grid(row=0, column=0, padx=10)
+
+btn_parar = tk.Button(frame_botoes, text="Parar Monitoramento", command=parar_monitoramento)
+btn_parar.grid(row=0, column=1, padx=10)
+
+# Iniciar o loop principal da interface
+janela.mainloop()
+https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrM está fora do ar. Detalhes: No connection adapters were found for 'import requests\nimport time\nimport threading\nimport tkinter as tk\nfrom tkinter import scrolledtext\nfrom email.mime.text import MIMEText\nfrom email.mime.multipart import MIMEMultipart\nimport smtplib\n\n# Configurações\nurl = "https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0"  # Substitua pela URL ou IP a ser monitorado\ntempo_verificacao = 10  # Intervalo entre verificações, em segundos\narquivo_log = "monitoramento.log"\n\n# Configurações de Email\nemail_envio = "seuemail@gmail.com"  # Email remetente\nemail_senha = "sua_senha"  # Senha do email remetente\nemail_destino = "destinatario@gmail.com"  # Email destinatário\n\nmonitorando = False  # Controle do monitoramento\n\n\ndef enviar_email(mensagem):\n    """Função para enviar notificações por email."""\n    try:\n        msg = MIMEMultipart()\n        msg[\'From\'] = email_envio\n        msg[\'To\'] = email_destino\n        msg[\'Subject\'] = "Alerta: Sistema Fora do Ar"\n\n        msg.attach(MIMEText(mensagem, \'plain\'))\n\n        servidor = smtplib.SMTP(\'smtp.gmail.com\', 587)\n        servidor.starttls()\n        servidor.login(email_envio, email_senha)\n        servidor.send_message(msg)\n        servidor.quit()\n\n        adicionar_log("[NOTIFICAÇÃO] Email enviado com sucesso!")\n    except Exception as e:\n        adicionar_log(f"[ERRO] Falha ao enviar email. Detalhes: {e}")\n\n\ndef registrar_log(mensagem):\n    """Função para registrar eventos em um arquivo de log."""\n    with open(arquivo_log, "a") as log:\n        log.write(f"{time.strftime(\'%Y-%m-%d %H:%M:%S\')} - {mensagem}\\n")\n\n\ndef adicionar_log(mensagem):\n    """Adiciona uma mensagem ao painel de logs."""\n    painel_logs.insert(tk.END, f"{time.strftime(\'%Y-%m-%d %H:%M:%S\')} - {mensagem}\\n")\n    painel_logs.see(tk.END)\n\n\ndef monitorar_sistema():\n    """Função principal para monitorar o sistema."""\n    global monitorando\n    while monitorando:\n        try:\n            resposta = requests.get(url, timeout=10)\n            if resposta.status_code == 200:\n                mensagem = f"[OK] {url} está no ar."\n                adicionar_log(mensagem)\n                registrar_log(mensagem)\n            else:\n                mensagem = f"[ERRO] {url} retornou o status: {resposta.status_code}"\n                adicionar_log(mensagem)\n                registrar_log(mensagem)\n                enviar_email(mensagem)\n        except requests.exceptions.RequestException as e:\n            mensagem = f"[FALHA] {url} está fora do ar. Detalhes: {e}"\n            adicionar_log(mensagem)\n            registrar_log(mensagem)\n            enviar_email(mensagem)\n\n        time.sleep(tempo_verificacao)\n\n\ndef iniciar_monitoramento():\n    """Inicia o monitoramento em uma thread separada."""\n    global monitorando\n    monitorando = True\n    thread = threading.Thread(target=monitorar_sistema)\n    thread.daemon = True\n    thread.start()\n    adicionar_log("[INFO] Monitoramento iniciado.")\n\n\ndef parar_monitoramento():\n    """Para o monitoramento."""\n    global monitorando\n    monitorando = False\n    adicionar_log("[INFO] Monitoramento parado.")\n\n\n# Interface Gráfica\njanela = tk.Tk()\njanela.title("Painel de Monitoramento")\njanela.geometry("600x400")\n\n# Label de URL monitorada\nlabel_url = tk.Label(janela, text=f"Monitorando: {url}", font=("Arial", 12))\nlabel_url.pack(pady=10)\n\n# Painel de logs\npainel_logs = scrolledtext.ScrolledText(janela, width=70, height=15)\npainel_logs.pack(pady=10)\n\n# Botões de controle\nframe_botoes = tk.Frame(janela)\nframe_botoes.pack(pady=10)\n\nbtn_iniciar = tk.Button(frame_botoes, text="Iniciar Monitoramento", command=iniciar_monitoramento)\nbtn_iniciar.grid(row=0, column=0, padx=10)\n\nbtn_parar = tk.Button(frame_botoes, text="Parar Monitoramento", command=parar_monitoramento)\nbtn_parar.grid(row=0, column=1, padx=10)\n\n# Iniciar o loop principal da interface\njanela.mainloop()\nhttps://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrM'
+2025-01-09 11:37:44 - [FALHA] import requests
+import time
+import threading
+import tkinter as tk
+from tkinter import scrolledtext
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import smtplib
+
+# Configurações
+url = "https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0"  # Substitua pela URL ou IP a ser monitorado
+tempo_verificacao = 10  # Intervalo entre verificações, em segundos
+arquivo_log = "monitoramento.log"
+
+# Configurações de Email
+email_envio = "seuemail@gmail.com"  # Email remetente
+email_senha = "sua_senha"  # Senha do email remetente
+email_destino = "destinatario@gmail.com"  # Email destinatário
+
+monitorando = False  # Controle do monitoramento
+
+
+def enviar_email(mensagem):
+    """Função para enviar notificações por email."""
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = email_envio
+        msg['To'] = email_destino
+        msg['Subject'] = "Alerta: Sistema Fora do Ar"
+
+        msg.attach(MIMEText(mensagem, 'plain'))
+
+        servidor = smtplib.SMTP('smtp.gmail.com', 587)
+        servidor.starttls()
+        servidor.login(email_envio, email_senha)
+        servidor.send_message(msg)
+        servidor.quit()
+
+        adicionar_log("[NOTIFICAÇÃO] Email enviado com sucesso!")
+    except Exception as e:
+        adicionar_log(f"[ERRO] Falha ao enviar email. Detalhes: {e}")
+
+
+def registrar_log(mensagem):
+    """Função para registrar eventos em um arquivo de log."""
+    with open(arquivo_log, "a") as log:
+        log.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} - {mensagem}\n")
+
+
+def adicionar_log(mensagem):
+    """Adiciona uma mensagem ao painel de logs."""
+    painel_logs.insert(tk.END, f"{time.strftime('%Y-%m-%d %H:%M:%S')} - {mensagem}\n")
+    painel_logs.see(tk.END)
+
+
+def monitorar_sistema():
+    """Função principal para monitorar o sistema."""
+    global monitorando
+    while monitorando:
+        try:
+            resposta = requests.get(url, timeout=10)
+            if resposta.status_code == 200:
+                mensagem = f"[OK] {url} está no ar."
+                adicionar_log(mensagem)
+                registrar_log(mensagem)
+            else:
+                mensagem = f"[ERRO] {url} retornou o status: {resposta.status_code}"
+                adicionar_log(mensagem)
+                registrar_log(mensagem)
+                enviar_email(mensagem)
+        except requests.exceptions.RequestException as e:
+            mensagem = f"[FALHA] {url} está fora do ar. Detalhes: {e}"
+            adicionar_log(mensagem)
+            registrar_log(mensagem)
+            enviar_email(mensagem)
+
+        time.sleep(tempo_verificacao)
+
+
+def iniciar_monitoramento():
+    """Inicia o monitoramento em uma thread separada."""
+    global monitorando
+    monitorando = True
+    thread = threading.Thread(target=monitorar_sistema)
+    thread.daemon = True
+    thread.start()
+    adicionar_log("[INFO] Monitoramento iniciado.")
+
+
+def parar_monitoramento():
+    """Para o monitoramento."""
+    global monitorando
+    monitorando = False
+    adicionar_log("[INFO] Monitoramento parado.")
+
+
+# Interface Gráfica
+janela = tk.Tk()
+janela.title("Painel de Monitoramento")
+janela.geometry("600x400")
+
+# Label de URL monitorada
+label_url = tk.Label(janela, text=f"Monitorando: {url}", font=("Arial", 12))
+label_url.pack(pady=10)
+
+# Painel de logs
+painel_logs = scrolledtext.ScrolledText(janela, width=70, height=15)
+painel_logs.pack(pady=10)
+
+# Botões de controle
+frame_botoes = tk.Frame(janela)
+frame_botoes.pack(pady=10)
+
+btn_iniciar = tk.Button(frame_botoes, text="Iniciar Monitoramento", command=iniciar_monitoramento)
+btn_iniciar.grid(row=0, column=0, padx=10)
+
+btn_parar = tk.Button(frame_botoes, text="Parar Monitoramento", command=parar_monitoramento)
+btn_parar.grid(row=0, column=1, padx=10)
+
+# Iniciar o loop principal da interface
+janela.mainloop()
+https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrM está fora do ar. Detalhes: No connection adapters were found for 'import requests\nimport time\nimport threading\nimport tkinter as tk\nfrom tkinter import scrolledtext\nfrom email.mime.text import MIMEText\nfrom email.mime.multipart import MIMEMultipart\nimport smtplib\n\n# Configurações\nurl = "https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0"  # Substitua pela URL ou IP a ser monitorado\ntempo_verificacao = 10  # Intervalo entre verificações, em segundos\narquivo_log = "monitoramento.log"\n\n# Configurações de Email\nemail_envio = "seuemail@gmail.com"  # Email remetente\nemail_senha = "sua_senha"  # Senha do email remetente\nemail_destino = "destinatario@gmail.com"  # Email destinatário\n\nmonitorando = False  # Controle do monitoramento\n\n\ndef enviar_email(mensagem):\n    """Função para enviar notificações por email."""\n    try:\n        msg = MIMEMultipart()\n        msg[\'From\'] = email_envio\n        msg[\'To\'] = email_destino\n        msg[\'Subject\'] = "Alerta: Sistema Fora do Ar"\n\n        msg.attach(MIMEText(mensagem, \'plain\'))\n\n        servidor = smtplib.SMTP(\'smtp.gmail.com\', 587)\n        servidor.starttls()\n        servidor.login(email_envio, email_senha)\n        servidor.send_message(msg)\n        servidor.quit()\n\n        adicionar_log("[NOTIFICAÇÃO] Email enviado com sucesso!")\n    except Exception as e:\n        adicionar_log(f"[ERRO] Falha ao enviar email. Detalhes: {e}")\n\n\ndef registrar_log(mensagem):\n    """Função para registrar eventos em um arquivo de log."""\n    with open(arquivo_log, "a") as log:\n        log.write(f"{time.strftime(\'%Y-%m-%d %H:%M:%S\')} - {mensagem}\\n")\n\n\ndef adicionar_log(mensagem):\n    """Adiciona uma mensagem ao painel de logs."""\n    painel_logs.insert(tk.END, f"{time.strftime(\'%Y-%m-%d %H:%M:%S\')} - {mensagem}\\n")\n    painel_logs.see(tk.END)\n\n\ndef monitorar_sistema():\n    """Função principal para monitorar o sistema."""\n    global monitorando\n    while monitorando:\n        try:\n            resposta = requests.get(url, timeout=10)\n            if resposta.status_code == 200:\n                mensagem = f"[OK] {url} está no ar."\n                adicionar_log(mensagem)\n                registrar_log(mensagem)\n            else:\n                mensagem = f"[ERRO] {url} retornou o status: {resposta.status_code}"\n                adicionar_log(mensagem)\n                registrar_log(mensagem)\n                enviar_email(mensagem)\n        except requests.exceptions.RequestException as e:\n            mensagem = f"[FALHA] {url} está fora do ar. Detalhes: {e}"\n            adicionar_log(mensagem)\n            registrar_log(mensagem)\n            enviar_email(mensagem)\n\n        time.sleep(tempo_verificacao)\n\n\ndef iniciar_monitoramento():\n    """Inicia o monitoramento em uma thread separada."""\n    global monitorando\n    monitorando = True\n    thread = threading.Thread(target=monitorar_sistema)\n    thread.daemon = True\n    thread.start()\n    adicionar_log("[INFO] Monitoramento iniciado.")\n\n\ndef parar_monitoramento():\n    """Para o monitoramento."""\n    global monitorando\n    monitorando = False\n    adicionar_log("[INFO] Monitoramento parado.")\n\n\n# Interface Gráfica\njanela = tk.Tk()\njanela.title("Painel de Monitoramento")\njanela.geometry("600x400")\n\n# Label de URL monitorada\nlabel_url = tk.Label(janela, text=f"Monitorando: {url}", font=("Arial", 12))\nlabel_url.pack(pady=10)\n\n# Painel de logs\npainel_logs = scrolledtext.ScrolledText(janela, width=70, height=15)\npainel_logs.pack(pady=10)\n\n# Botões de controle\nframe_botoes = tk.Frame(janela)\nframe_botoes.pack(pady=10)\n\nbtn_iniciar = tk.Button(frame_botoes, text="Iniciar Monitoramento", command=iniciar_monitoramento)\nbtn_iniciar.grid(row=0, column=0, padx=10)\n\nbtn_parar = tk.Button(frame_botoes, text="Parar Monitoramento", command=parar_monitoramento)\nbtn_parar.grid(row=0, column=1, padx=10)\n\n# Iniciar o loop principal da interface\njanela.mainloop()\nhttps://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrM'
+2025-01-09 11:37:44 - [FALHA] import requests
+import time
+import threading
+import tkinter as tk
+from tkinter import scrolledtext
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import smtplib
+
+# Configurações
+url = "https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0"  # Substitua pela URL ou IP a ser monitorado
+tempo_verificacao = 10  # Intervalo entre verificações, em segundos
+arquivo_log = "monitoramento.log"
+
+# Configurações de Email
+email_envio = "seuemail@gmail.com"  # Email remetente
+email_senha = "sua_senha"  # Senha do email remetente
+email_destino = "destinatario@gmail.com"  # Email destinatário
+
+monitorando = False  # Controle do monitoramento
+
+
+def enviar_email(mensagem):
+    """Função para enviar notificações por email."""
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = email_envio
+        msg['To'] = email_destino
+        msg['Subject'] = "Alerta: Sistema Fora do Ar"
+
+        msg.attach(MIMEText(mensagem, 'plain'))
+
+        servidor = smtplib.SMTP('smtp.gmail.com', 587)
+        servidor.starttls()
+        servidor.login(email_envio, email_senha)
+        servidor.send_message(msg)
+        servidor.quit()
+
+        adicionar_log("[NOTIFICAÇÃO] Email enviado com sucesso!")
+    except Exception as e:
+        adicionar_log(f"[ERRO] Falha ao enviar email. Detalhes: {e}")
+
+
+def registrar_log(mensagem):
+    """Função para registrar eventos em um arquivo de log."""
+    with open(arquivo_log, "a") as log:
+        log.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} - {mensagem}\n")
+
+
+def adicionar_log(mensagem):
+    """Adiciona uma mensagem ao painel de logs."""
+    painel_logs.insert(tk.END, f"{time.strftime('%Y-%m-%d %H:%M:%S')} - {mensagem}\n")
+    painel_logs.see(tk.END)
+
+
+def monitorar_sistema():
+    """Função principal para monitorar o sistema."""
+    global monitorando
+    while monitorando:
+        try:
+            resposta = requests.get(url, timeout=10)
+            if resposta.status_code == 200:
+                mensagem = f"[OK] {url} está no ar."
+                adicionar_log(mensagem)
+                registrar_log(mensagem)
+            else:
+                mensagem = f"[ERRO] {url} retornou o status: {resposta.status_code}"
+                adicionar_log(mensagem)
+                registrar_log(mensagem)
+                enviar_email(mensagem)
+        except requests.exceptions.RequestException as e:
+            mensagem = f"[FALHA] {url} está fora do ar. Detalhes: {e}"
+            adicionar_log(mensagem)
+            registrar_log(mensagem)
+            enviar_email(mensagem)
+
+        time.sleep(tempo_verificacao)
+
+
+def iniciar_monitoramento():
+    """Inicia o monitoramento em uma thread separada."""
+    global monitorando
+    monitorando = True
+    thread = threading.Thread(target=monitorar_sistema)
+    thread.daemon = True
+    thread.start()
+    adicionar_log("[INFO] Monitoramento iniciado.")
+
+
+def parar_monitoramento():
+    """Para o monitoramento."""
+    global monitorando
+    monitorando = False
+    adicionar_log("[INFO] Monitoramento parado.")
+
+
+# Interface Gráfica
+janela = tk.Tk()
+janela.title("Painel de Monitoramento")
+janela.geometry("600x400")
+
+# Label de URL monitorada
+label_url = tk.Label(janela, text=f"Monitorando: {url}", font=("Arial", 12))
+label_url.pack(pady=10)
+
+# Painel de logs
+painel_logs = scrolledtext.ScrolledText(janela, width=70, height=15)
+painel_logs.pack(pady=10)
+
+# Botões de controle
+frame_botoes = tk.Frame(janela)
+frame_botoes.pack(pady=10)
+
+btn_iniciar = tk.Button(frame_botoes, text="Iniciar Monitoramento", command=iniciar_monitoramento)
+btn_iniciar.grid(row=0, column=0, padx=10)
+
+btn_parar = tk.Button(frame_botoes, text="Parar Monitoramento", command=parar_monitoramento)
+btn_parar.grid(row=0, column=1, padx=10)
+
+# Iniciar o loop principal da interface
+janela.mainloop()
+https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrM está fora do ar. Detalhes: No connection adapters were found for 'import requests\nimport time\nimport threading\nimport tkinter as tk\nfrom tkinter import scrolledtext\nfrom email.mime.text import MIMEText\nfrom email.mime.multipart import MIMEMultipart\nimport smtplib\n\n# Configurações\nurl = "https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0"  # Substitua pela URL ou IP a ser monitorado\ntempo_verificacao = 10  # Intervalo entre verificações, em segundos\narquivo_log = "monitoramento.log"\n\n# Configurações de Email\nemail_envio = "seuemail@gmail.com"  # Email remetente\nemail_senha = "sua_senha"  # Senha do email remetente\nemail_destino = "destinatario@gmail.com"  # Email destinatário\n\nmonitorando = False  # Controle do monitoramento\n\n\ndef enviar_email(mensagem):\n    """Função para enviar notificações por email."""\n    try:\n        msg = MIMEMultipart()\n        msg[\'From\'] = email_envio\n        msg[\'To\'] = email_destino\n        msg[\'Subject\'] = "Alerta: Sistema Fora do Ar"\n\n        msg.attach(MIMEText(mensagem, \'plain\'))\n\n        servidor = smtplib.SMTP(\'smtp.gmail.com\', 587)\n        servidor.starttls()\n        servidor.login(email_envio, email_senha)\n        servidor.send_message(msg)\n        servidor.quit()\n\n        adicionar_log("[NOTIFICAÇÃO] Email enviado com sucesso!")\n    except Exception as e:\n        adicionar_log(f"[ERRO] Falha ao enviar email. Detalhes: {e}")\n\n\ndef registrar_log(mensagem):\n    """Função para registrar eventos em um arquivo de log."""\n    with open(arquivo_log, "a") as log:\n        log.write(f"{time.strftime(\'%Y-%m-%d %H:%M:%S\')} - {mensagem}\\n")\n\n\ndef adicionar_log(mensagem):\n    """Adiciona uma mensagem ao painel de logs."""\n    painel_logs.insert(tk.END, f"{time.strftime(\'%Y-%m-%d %H:%M:%S\')} - {mensagem}\\n")\n    painel_logs.see(tk.END)\n\n\ndef monitorar_sistema():\n    """Função principal para monitorar o sistema."""\n    global monitorando\n    while monitorando:\n        try:\n            resposta = requests.get(url, timeout=10)\n            if resposta.status_code == 200:\n                mensagem = f"[OK] {url} está no ar."\n                adicionar_log(mensagem)\n                registrar_log(mensagem)\n            else:\n                mensagem = f"[ERRO] {url} retornou o status: {resposta.status_code}"\n                adicionar_log(mensagem)\n                registrar_log(mensagem)\n                enviar_email(mensagem)\n        except requests.exceptions.RequestException as e:\n            mensagem = f"[FALHA] {url} está fora do ar. Detalhes: {e}"\n            adicionar_log(mensagem)\n            registrar_log(mensagem)\n            enviar_email(mensagem)\n\n        time.sleep(tempo_verificacao)\n\n\ndef iniciar_monitoramento():\n    """Inicia o monitoramento em uma thread separada."""\n    global monitorando\n    monitorando = True\n    thread = threading.Thread(target=monitorar_sistema)\n    thread.daemon = True\n    thread.start()\n    adicionar_log("[INFO] Monitoramento iniciado.")\n\n\ndef parar_monitoramento():\n    """Para o monitoramento."""\n    global monitorando\n    monitorando = False\n    adicionar_log("[INFO] Monitoramento parado.")\n\n\n# Interface Gráfica\njanela = tk.Tk()\njanela.title("Painel de Monitoramento")\njanela.geometry("600x400")\n\n# Label de URL monitorada\nlabel_url = tk.Label(janela, text=f"Monitorando: {url}", font=("Arial", 12))\nlabel_url.pack(pady=10)\n\n# Painel de logs\npainel_logs = scrolledtext.ScrolledText(janela, width=70, height=15)\npainel_logs.pack(pady=10)\n\n# Botões de controle\nframe_botoes = tk.Frame(janela)\nframe_botoes.pack(pady=10)\n\nbtn_iniciar = tk.Button(frame_botoes, text="Iniciar Monitoramento", command=iniciar_monitoramento)\nbtn_iniciar.grid(row=0, column=0, padx=10)\n\nbtn_parar = tk.Button(frame_botoes, text="Parar Monitoramento", command=parar_monitoramento)\nbtn_parar.grid(row=0, column=1, padx=10)\n\n# Iniciar o loop principal da interface\njanela.mainloop()\nhttps://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrM'
+2025-01-09 11:38:10 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2330ms.
+2025-01-09 11:38:22 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2386ms.
+2025-01-09 11:38:35 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2403ms.
+2025-01-09 11:38:47 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2408ms.
+2025-01-09 11:38:59 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2200ms.
+2025-01-09 11:39:12 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2339ms.
+2025-01-09 11:39:24 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2592ms.
+2025-01-09 11:39:37 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2701ms.
+2025-01-09 11:39:50 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2340ms.
+2025-01-09 11:40:02 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2425ms.
+2025-01-09 11:40:14 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2203ms.
+2025-01-09 11:40:26 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2223ms.
+2025-01-09 11:40:39 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2466ms.
+2025-01-09 11:40:51 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2247ms.
+2025-01-09 11:41:04 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2541ms.
+2025-01-09 11:41:16 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2777ms.
+2025-01-09 11:41:29 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2271ms.
+2025-01-09 11:41:41 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2596ms.
+2025-01-09 11:41:54 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2481ms.
+2025-01-09 11:42:09 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 4767ms.
+2025-01-09 11:42:27 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 8079ms.
+2025-01-09 11:42:40 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 3017ms.
+2025-01-09 11:42:52 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2578ms.
+2025-01-09 11:43:05 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2330ms.
+2025-01-09 11:43:17 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2225ms.
+2025-01-09 11:43:30 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2610ms.
+2025-01-09 11:43:42 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2362ms.
+2025-01-09 11:43:54 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2361ms.
+2025-01-09 11:44:07 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2433ms.
+2025-01-09 11:44:19 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2293ms.
+2025-01-09 11:44:32 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2459ms.
+2025-01-09 11:44:44 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2230ms.
+2025-01-09 11:44:56 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2432ms.
+2025-01-09 11:45:09 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2266ms.
+2025-01-09 11:45:21 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2196ms.
+2025-01-09 11:45:33 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2544ms.
+2025-01-09 11:45:46 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2328ms.
+2025-01-09 11:45:59 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 3441ms.
+2025-01-09 11:46:11 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2272ms.
+2025-01-09 11:46:24 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2346ms.
+2025-01-09 11:46:36 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2299ms.
+2025-01-09 11:46:49 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2553ms.
+2025-01-09 11:47:01 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2468ms.
+2025-01-09 11:47:14 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2512ms.
+2025-01-09 11:47:26 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2371ms.
+2025-01-09 11:47:38 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2431ms.
+2025-01-09 11:47:51 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2693ms.
+2025-01-09 11:48:04 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2652ms.
+2025-01-09 11:48:16 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2378ms.
+2025-01-09 11:48:30 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 3416ms.
+2025-01-09 11:48:42 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2388ms.
+2025-01-09 11:48:55 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2487ms.
+2025-01-09 11:49:07 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2500ms.
+2025-01-09 11:49:20 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2653ms.
+2025-01-09 11:49:32 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2528ms.
+2025-01-09 11:49:46 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 3429ms.
+2025-01-09 11:49:59 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 3556ms.
+2025-01-09 11:50:12 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2838ms.
+2025-01-09 11:50:24 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2184ms.
+2025-01-09 11:50:38 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 3352ms.
+2025-01-09 11:50:50 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2487ms.
+2025-01-09 11:51:03 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2740ms.
+2025-01-09 11:51:16 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2677ms.
+2025-01-09 11:51:28 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2587ms.
+2025-01-09 11:51:41 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2374ms.
+2025-01-09 11:51:53 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2323ms.
+2025-01-09 11:52:05 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2197ms.
+2025-01-09 11:52:18 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2636ms.
+2025-01-09 11:52:31 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 3236ms.
+2025-01-09 11:52:34 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar. Tempo de resposta: 2366ms.
+2025-01-09 14:00:35 - [OK] https://jl1yzdgazcviono-db1.adb.uk-london-1.oraclecloudapps.com/ords/r/dev/cloudsql/login?session=2910249525712 está no ar.
+2025-01-09 14:00:38 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar.
+2025-01-09 14:00:49 - [OK] https://jl1yzdgazcviono-db1.adb.uk-london-1.oraclecloudapps.com/ords/r/dev/cloudsql/login?session=2910249525712 está no ar.
+2025-01-09 14:00:52 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar.
+2025-01-09 14:01:04 - [OK] https://jl1yzdgazcviono-db1.adb.uk-london-1.oraclecloudapps.com/ords/r/dev/cloudsql/login?session=2910249525712 está no ar.
+2025-01-09 14:01:06 - [OK] https://epfa-test.fa.us2.oraclecloud.com/fscmUI/faces/FuseWelcome?_afrLoop=29754934183513255&_afrWindowMode=0&_afrWindowId=null&_adf.ctrl-state=jfpood4hh_1&_afrFS=16&_afrMT=screen&_afrMFW=1536&_afrMFH=695&_afrMFDW=1536&_afrMFDH=864&_afrMFC=8&_afrMFCI=0&_afrMFM=0&_afrMFR=120&_afrMFG=0&_afrMFS=0&_afrMFO=0 está no ar.
